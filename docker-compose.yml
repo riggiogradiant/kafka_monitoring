@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: debezium
+      POSTGRES_PASSWORD: dbz
+      POSTGRES_DB: inventory
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "wal_level=logical"]
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dbz
+      MYSQL_USER: debezium
+      MYSQL_PASSWORD: dbz
+      MYSQL_DATABASE: inventory
+    ports:
+      - "3306:3306"
+    command: ["--default-authentication-plugin=mysql_native_password", "--server-id=223344", "--binlog-format=row", "--binlog-row-image=full", "--gtid-mode=ON", "--enforce-gtid-consistency=ON", "--log-bin=mysql-bin", "--binlog-do-db=inventory"]
+  debezium:
+    image: debezium/connect:2.5
+    depends_on:
+      - kafka
+      - postgres
+      - mysql
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: debezium_connect_config
+      OFFSET_STORAGE_TOPIC: debezium_connect_offset
+      STATUS_STORAGE_TOPIC: debezium_connect_status
+      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: debezium
+      CONNECT_REST_PORT: 8083
+      CONNECT_PLUGIN_PATH: /kafka/connect,/debezium-connector-postgres,/debezium-connector-mysql
