@@ -84,10 +84,35 @@ Deja esta terminal abierta, el script mostrará los mensajes insertados en MySQL
 docker compose down -v
 ```
 
-## Próximos pasos
-- Añadir scripts de inicialización de datos.
-- Probar herramientas de monitorización (Prometheus, JMX, etc.).
-- Añadir ejemplos de productores/consumidores.
+
+## Monitorización de Kafka con Prometheus y Grafana
+
+### Servicios añadidos
+- **kafka-jmx-exporter**: expone métricas JMX de Kafka en formato Prometheus.
+- **prometheus**: recolecta métricas de kafka-jmx-exporter.
+- **grafana**: visualiza dashboards de Kafka.
+
+### Secuencia para monitorizar
+1. Levanta el entorno completo:
+  ```bash
+  docker compose up -d --build
+  ```
+2. Accede a Prometheus en http://localhost:9090 y verifica el target kafka-jmx-exporter.
+3. Accede a Grafana en http://localhost:3000 (usuario admin, contraseña admin).
+4. Añade Prometheus como datasource en Grafana (URL: http://prometheus:9090).
+5. Importa dashboards oficiales de Kafka (por ejemplo, ID 7589: "Kafka Overview").
+6. Visualiza métricas clave: throughput, lag, estado de brokers, topics, etc.
+
+### Configuración
+- El archivo `monitoring/prometheus.yml` define el target kafka-jmx-exporter.
+- El archivo `monitoring/jmx-exporter-config.yml` define las métricas JMX a exportar.
+
+### Extensiones
+- Puedes añadir exporters para consumidores (Kafka Exporter, Burrow).
+- Puedes definir alertas en Grafana para lag, brokers offline, etc.
+
+---
+Este entorno permite monitorizar Kafka de forma flexible y extensible usando herramientas open source.
 
 ---
 

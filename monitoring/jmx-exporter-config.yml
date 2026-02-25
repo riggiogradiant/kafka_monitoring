@@ -1,0 +1,56 @@
+---
+startDelaySeconds: 0
+jmxUrl: service:jmx:rmi:///jndi/rmi://kafka:9999/jmxrmi
+ssl: false
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  # Reglas específicas para clientes y topics
+  - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+    name: kafka_server_$1_$2
+    type: GAUGE
+    labels:
+      clientId: "$3"
+      topic: "$4"
+      partition: "$5"
+  - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+    name: kafka_server_$1_$2
+    type: GAUGE
+    labels:
+      clientId: "$3"
+      broker: "$4:$5"
+      
+  # Reglas generales para métricas con Topic y Partition
+  - pattern: kafka.(\w+)<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      topic: "$4"
+      partition: "$5"
+      
+  # Reglas generales para métricas solo con Topic
+  - pattern: kafka.(\w+)<type=(.+), name=(.+), topic=(.+)><>Value
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      topic: "$4"
+      
+  # Reglas para métricas simples (como el ControllerState que busca Grafana)
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
+    name: kafka_$1_$2_$3
+    type: GAUGE
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Count
+    name: kafka_$1_$2_$3_count
+    type: COUNTER
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>OneMinuteRate
+    name: kafka_$1_$2_$3_1m_rate
+    type: GAUGE
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>FiveMinuteRate
+    name: kafka_$1_$2_$3_5m_rate
+    type: GAUGE
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>FifteenMinuteRate
+    name: kafka_$1_$2_$3_15m_rate
+    type: GAUGE
+  - pattern: kafka.(\w+)<type=(.+), name=(.+)><>(\d+)thPercentile
+    name: kafka_$1_$2_$3_$4_percentile
+    type: GAUGE

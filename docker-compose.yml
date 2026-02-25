@@ -7,6 +7,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
@@ -21,6 +22,9 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      JMX_PORT: 9999
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9999"
+
   postgres:
     image: postgres:15
     environment:
@@ -30,6 +34,7 @@ services:
     ports:
       - "5432:5432"
     command: ["postgres", "-c", "wal_level=logical"]
+
   mysql:
     image: mysql:8.0
     environment:
@@ -40,6 +45,7 @@ services:
     ports:
       - "3306:3306"
     command: ["--default-authentication-plugin=mysql_native_password", "--server-id=223344", "--binlog-format=row", "--binlog-row-image=full", "--gtid-mode=ON", "--enforce-gtid-consistency=ON", "--log-bin=mysql-bin", "--binlog-do-db=inventory"]
+
   debezium:
     image: debezium/connect:2.5
     depends_on:
@@ -61,3 +67,35 @@ services:
       CONNECT_REST_ADVERTISED_HOST_NAME: debezium
       CONNECT_REST_PORT: 8083
       CONNECT_PLUGIN_PATH: /kafka/connect,/debezium-connector-postgres,/debezium-connector-mysql
+
+  kafka-jmx-exporter:
+    image: bitnami/jmx-exporter:latest
+    depends_on:
+      - kafka
+    ports:
+      - "9404:9404"
+    volumes:
+      - ./monitoring/jmx-exporter-config.yml:/config.yml:ro
+    # --- CAMBIO: Usamos el entrypoint por defecto de bitnami y le pasamos puerto y config ---
+    command: ["9404", "/config.yml"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  grafana-data:
